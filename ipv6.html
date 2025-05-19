@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>IPv6 多接口检测</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: "Courier New", monospace;
+            font-size: 1.1rem;
+            background-color: #000;
+            color: #0f0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="ipv6"></div>
+
+    <script>
+        const ipv6Urls = [
+            'https://v6.ident.me/',       // 纯文本接口
+            'https://6.ipw.cn/',          // 备用接口1
+            'https://ipapi.co/ip/',       // 自适应IP接口（优先返回IPv6）
+            'https://ipv6.icanhazip.com/' // 备用接口2
+        ];
+
+        async function fetchIpv6() {
+            for (const url of ipv6Urls) {
+                try {
+                    const response = await fetch(url, { mode: 'cors', timeout: 5000 });
+                    if (!response.ok) throw new Error(`HTTP错误：${response.status}`);
+                    const ip = await response.text();
+                    // 验证是否为IPv6格式（简单正则匹配）
+                    const ipv6Regex = /^[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){7}$/;
+                    if (ipv6Regex.test(ip.trim())) {
+                        return ip.trim();
+                    }
+                } catch (error) {
+                    console.log(`接口 ${url} 失败：`, error);
+                    continue; // 继续尝试下一个接口
+                }
+            }
+            return '无法获取有效IPv6地址'; // 所有接口失败
+        }
+
+        // 执行检测
+        fetchIpv6()
+            .then(ip => document.getElementById('ipv6').textContent = ip)
+            .catch(error => document.getElementById('ipv6').textContent = '检测过程中发生错误');
+    </script>
+</body>
+</html>

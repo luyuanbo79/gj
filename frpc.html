@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRPC新旧版配置生成器</title>
+    <style>
+        * {
+            font-family: 'Segoe UI', sans-serif;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            max-width: 1000px;
+            width: 100%;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .tab-container {
+            margin-bottom: 25px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background-color: #f8f9fa;
+            border: none;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .tab-btn.active {
+            background-color: #1a73e8;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: 1px solid #f0f0f0;
+            border-radius: 0 4px 4px 4px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        #preview {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #f0f0f0;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>FRPC新旧版配置文件生成器</h1>
+        
+        <!-- 选项卡切换 -->
+        <div class="tab-container">
+            <button class="tab-btn active" onclick="showTab('old')">旧版 (v0.33.x 前)</button>
+            <button class="tab-btn" onclick="showTab('new')">新版 (v0.40+)</button>
+        </div>
+
+        <!-- 旧版配置生成 -->
+        <div id="oldTab" class="tab-content active">
+            <h3>旧版配置生成（单代理）</h3>
+            <div class="form-group">
+                <label>服务器地址</label>
+                <input type="text" id="oldServer" required placeholder="如 frp.example.com">
+            </div>
+            <div class="form-group">
+                <label>服务器端口</label>
+                <input type="number" id="oldPort" value="7000" required>
+            </div>
+            <div class="form-group">
+                <label>代理类型</label>
+                <select id="oldType">
+                    <option value="http">HTTP</option>
+                    <option value="tcp">TCP</option>
+                </select>
+            </div>
+            <div class="form-group" id="oldRemotePortDiv" style="display: none;">
+                <label>远程端口（TCP专用）</label>
+                <input type="number" id="oldRemotePort">
+            </div>
+            <button onclick="generateOldConfig()">生成旧版配置</button>
+            <div id="oldPreview"></div>
+        </div>
+
+        <!-- 新版配置生成 -->
+        <div id="newTab" class="tab-content">
+            <h3>新版配置生成（多代理）</h3>
+            <div class="form-group">
+                <label>服务器地址</label>
+                <input type="text" id="newServer" required placeholder="如 frp.example.com">
+            </div>
+            <div class="form-group">
+                <label>服务器端口</label>
+                <input type="number" id="newPort" value="7000" required>
+            </div>
+            <div class="form-group">
+                <label>认证 Token</label>
+                <input type="text" id="newToken" placeholder="可选，服务端配置的 Token">
+            </div>
+            <div class="form-group">
+                <label>连接超时（秒）</label>
+                <input type="number" id="newTimeout" value="5">
+            </div>
+            
+            <!-- 多代理区域 -->
+            <div id="newProxyList"></div>
+            <button onclick="addNewProxy()">添加代理</button>
+            
+            <button onclick="generateNewConfig()" style="margin-top: 20px;">生成新版配置</button>
+            <div id="newPreview"></div>
+        </div>
+    </div>
+
+    <script>
+        // 选项卡切换逻辑
+        function showTab(type) {
+            document.querySelectorAll('.tab-content').forEach(tab => 
+                tab.classList.remove('active')
+            );
+            document.querySelectorAll('.tab-btn').forEach(btn => 
+                btn.classList.remove('active')
+            );
+            document.getElementById(`${type}Tab`).classList.add('active');
+            document.querySelector(`[onclick="showTab('${type}')"]`).classList.add('active');
+        }
+
+        // ---------------------- 旧版逻辑 ----------------------
+        document.getElementById('oldType').addEventListener('change', (e) => {
+            const isTCP = e.target.value === 'tcp';
+            document.getElementById('oldRemotePortDiv').style.display = isTCP ? 'block' : 'none';
+        });
+
+        function generateOldConfig() {
+            const server = document.getElementById('oldServer').value;
+            const port = document.getElementById('oldPort').value;
+            const type = document.getElementById('oldType').value;
+            const remotePort = document.getElementById('oldRemotePort').value || '';
+
+            let config = `[common]\nserver_addr = ${server}\nserver_port = ${port}\n\n`;
+            config += `[proxy]\ntype = ${type}\nlocal_port = ${document.getElementById('oldLocalPort').value || 80}`;
+            
+            if (type === 'tcp') {
+                config += `\nremote_port = ${remotePort || '随机端口'}`;
+            }
+
+            document.getElementById('oldPreview').textContent = config;
+            downloadConfig(config, 'frpc_old.ini');
+        }
+
+        // ---------------------- 新版逻辑 ----------------------
+        let newProxies = [];
+
+        function addNewProxy(init = false) {
+            const proxyId = newProxies.length + 1;
+            const proxyDiv = document.createElement('div');
+            proxyDiv.className = 'form-group';
+            proxyDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label>代理 ${proxyId}</label>
+                    <button class="danger-btn" onclick="removeNewProxy(this)">删除</button>
+                </div>
+                <div>
+                    <label>代理名称</label>
+                    <input type="text" class="proxy-name" value="proxy${proxyId}" required>
+                </div>
+                <div>
+                    <label>协议类型</label>
+                    <select class="proxy-type">
+                        <option value="http">HTTP</option>
+                        <option value="tcp">TCP</option>
+                        <option value="https">HTTPS</option>
+                        <option value="udp">UDP</option>
+                    </select>
+                </div>
+                <div class="remote-port-group" style="display: none;">
+                    <label>远程端口（TCP/UDP必填）</label>
+                    <input type="number" class="remote-port" required>
+                </div>
+                <div>
+                    <label>本地端口</label>
+                    <input type="number" class="local-port" required>
+                </div>
+            `;
+
+            // 协议切换显示远程端口
+            proxyDiv.querySelector('.proxy-type').addEventListener('change', (e) => {
+                const isTCPUDP = ['tcp', 'udp'].includes(e.target.value);
+                proxyDiv.querySelector('.remote-port-group').style.display = isTCPUDP ? 'block' : 'none';
+            });
+
+            newProxies.push(proxyDiv);
+            document.getElementById('newProxyList').appendChild(proxyDiv);
+
+            if (!init) {
+                proxyDiv.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        function removeNewProxy(btn) {
+            const index = newProxies.indexOf(btn.closest('.form-group'));
+            if (newProxies.length > 1) {
+                newProxies.splice(index, 1);
+                btn.closest('.form-group').remove();
+                // 重新编号
+                newProxies.forEach((proxy, i) => {
+                    proxy.querySelector('label').textContent = `代理 ${i+1}`;
+                    proxy.querySelector('.proxy-name').value = `proxy${i+1}`;
+                });
+            } else {
+                alert('至少保留一个代理');
+            }
+        }
+
+        function generateNewConfig() {
+            let config = '[common]\n';
+            config += `server_addr = ${document.getElementById('newServer').value}\n`;
+            config += `server_port = ${document.getElementById('newPort').value}\n`;
+            if (document.getElementById('newToken').value) {
+                config += `token = ${document.getElementById('newToken').value}\n`;
+            }
+            config += `connect_timeout = ${document.getElementById('newTimeout').value}\n\n`;
+
+            newProxies.forEach((proxy, i) => {
+                const name = proxy.querySelector('.proxy-name').value;
+                const type = proxy.querySelector('.proxy-type').value;
+                const localPort = proxy.querySelector('.local-port').value;
+                const remotePort = proxy.querySelector('.remote-port')?.value || '';
+
+                config += `[${name}]\n`;
+                config += `type = ${type}\n`;
+                config += `local_port = ${localPort}\n`;
+                
+                if (['tcp', 'udp'].includes(type)) {
+                    config += `remote_port = ${remotePort}\n`;
+                }
+                config += '\n'; // 空行
+            });
+
+            document.getElementById('newPreview').textContent = config.trim();
+            downloadConfig(config, 'frpc_new.ini');
+        }
+
+        // 通用下载函数
+        function downloadConfig(content, filename) {
+            const blob = new Blob([content], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        }
+
+        // 初始化：旧版默认显示TCP端口，新版添加第一个代理
+        document.getElementById('oldType').dispatchEvent(new Event('change'));
+        addNewProxy(true);
+    </script>
+</body>
+</html>
