@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>IPv6地址</title>
+    <script>
+        const urls = [
+            'https://v6.ident.me',
+            'https://6.ipw.cn',
+            'https://ipapi.co/ip',
+            'https://ipv6.icanhazip.com'
+        ];
+
+        async function getIPv6() {
+            for (const url of urls) {
+                try {
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const ip = await response.text();
+                        // 验证IPv6地址格式
+                        const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
+                        if (ipv6Regex.test(ip.trim())) {
+                            document.write(ip.trim());
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.error('请求失败:', error);
+                }
+            }
+            document.write('未获取到有效IPv6地址');
+        }
+
+        getIPv6();
+    </script>
+</head>
+<body>
+</body>
+</html>
