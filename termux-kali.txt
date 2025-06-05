@@ -1,4 +1,2 @@
-pkg update
-pkg upgrade
 termux-setup-storage
 bash <(curl -sSL https://gj.1.1.225521.xyz/install-nethunter-termux.sh)
