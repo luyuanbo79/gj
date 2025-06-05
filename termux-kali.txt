@@ -1,0 +1,5 @@
+pkg update
+pkg upgrade
+termux-setup-storage
+pkg install wget
+wget https://gj.1.1.225521.xyz/install-nethunter-termux.sh && chmod +x install-nethunter-termux.sh && ./install-nethunter-termux.sh
