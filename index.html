@@ -1,4 +1,4 @@
-\<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -205,7 +205,7 @@
                 // 分支或release源码
                 const match = inputUrl.match(/github\.com\/([^\/]+)\/([^\/]+)\/archive\/(.+)/);
                 if (match) {
-                    downloadUrl = `${window.location.origin}/github/${match[1]}/${match[2]}/archive/${match[3]}`;
+                    downloadUrl = `${window.location.origin}/github.com/${match[1]}/${match[2]}/archive/${match[3]}`;
                 }
             } else if (inputUrl.includes('/blob/')) {
                 // 分支或commit文件
